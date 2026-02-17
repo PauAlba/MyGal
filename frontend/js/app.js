@@ -153,6 +153,24 @@ function setupForms() {
         }
     });
 
+    // Crear colección
+    document.getElementById('formCrearColeccion').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const datos = {
+            nombre: form.nombre.value.trim(),
+            descripcion: form.descripcion.value.trim() || undefined
+        };
+        try {
+            await coleccionesAPI.crear(datos);
+            hideModals();
+            showToast('Colección creada correctamente', 'success');
+            loadPerfil();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    });
+
     // Buscar obras
     document.getElementById('btnBuscar').addEventListener('click', () => {
         const q = document.getElementById('searchObras').value.trim();
@@ -170,12 +188,24 @@ function setupForms() {
  * Cargar página Inicio
  */
 async function loadInicio() {
+    const gallery = document.getElementById('galleryInicio');
     try {
         const data = await obrasAPI.listar(12, 0);
-        renderGallery(document.getElementById('galleryInicio'), data.obras);
+        if (!data.obras || data.obras.length === 0) {
+            gallery.innerHTML = `
+                <p style="color:var(--color-text-muted); grid-column:1/-1; text-align:center; padding:2rem;">
+                    Aún no hay obras. ¡Regístrate, crea colecciones y publica tu primera obra!
+                </p>
+            `;
+        } else {
+            renderGallery(gallery, data.obras);
+        }
     } catch (err) {
-        document.getElementById('galleryInicio').innerHTML = 
-            '<p class="text-muted">No hay obras para mostrar.</p>';
+        gallery.innerHTML = `
+            <p style="color:#c45c5c; grid-column:1/-1; text-align:center; padding:2rem;">
+                Error al cargar: ${err.message}. Verifica que el backend esté corriendo en http://localhost:3000
+            </p>
+        `;
     }
 }
 
@@ -193,9 +223,21 @@ async function loadExplorar(q = '') {
             const data = await obrasAPI.listar(50, 0);
             obras = data.obras;
         }
-        renderGallery(gallery, obras);
+        if (!obras || obras.length === 0) {
+            gallery.innerHTML = `
+                <p style="color:var(--color-text-muted); grid-column:1/-1; text-align:center; padding:2rem;">
+                    ${q ? 'No se encontraron obras con esa búsqueda.' : 'Aún no hay obras. ¡Regístrate y publica la primera!'}
+                </p>
+            `;
+        } else {
+            renderGallery(gallery, obras);
+        }
     } catch (err) {
-        gallery.innerHTML = '<p class="text-muted">Error al cargar obras.</p>';
+        gallery.innerHTML = `
+            <p style="color:#c45c5c; grid-column:1/-1; text-align:center; padding:2rem;">
+                Error: ${err.message}. ¿Está el backend corriendo en http://localhost:3000?
+            </p>
+        `;
     }
 }
 
@@ -223,13 +265,27 @@ async function loadPerfil() {
                     <p class="username">@${escapeHtml(usuario.username)}</p>
                     ${usuario.descripcion ? `<p class="desc">${escapeHtml(usuario.descripcion)}</p>` : ''}
                     <div class="profile-actions">
+                        <button class="btn btn-primary btn-sm" id="btnCrearColeccion">Crear colección</button>
                         <button class="btn btn-outline btn-sm" onclick="showToast('Editar perfil próximamente', 'info')">Editar perfil</button>
                     </div>
                 </div>
             </div>
-            <h3 style="margin-bottom:1rem; font-family:var(--font-display)">Mis obras</h3>
+            ${colecciones && colecciones.length > 0 ? `
+                <h3 style="margin:1.5rem 0 0.75rem; font-family:var(--font-display)">Mis colecciones</h3>
+                <div class="colecciones-list" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1.5rem;">
+                    ${colecciones.map(c => `<span class="badge" style="background:var(--color-bg-alt); padding:0.35rem 0.75rem; border-radius:var(--radius);">${escapeHtml(c.nombre)}</span>`).join('')}
+                </div>
+            ` : ''}
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 style="margin:0; font-family:var(--font-display)">Mis obras</h3>
+            </div>
             <div class="gallery-grid" id="profileGallery"></div>
         `;
+
+        document.getElementById('btnCrearColeccion').addEventListener('click', () => {
+            document.getElementById('formCrearColeccion').reset();
+            showModal('modalColeccion');
+        });
 
         renderGallery(document.getElementById('profileGallery'), obras);
     } catch (err) {

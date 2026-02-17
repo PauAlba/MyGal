@@ -39,16 +39,18 @@ async function obtenerPorId(id_obra) {
 
 /**
  * Listar todas las obras públicas (ordenadas por fecha)
+ * Nota: LIMIT/OFFSET como literales (enteros validados) - mysql2 falla con placeholders aquí
  */
 async function listarTodas(limite = 50, offset = 0) {
+    const lim = Math.floor(Number(limite)) || 50;
+    const off = Math.floor(Number(offset)) || 0;
     const [rows] = await pool.execute(
         `SELECT o.*, u.nombre as autor_nombre, u.username as autor_username,
          (SELECT COUNT(*) FROM like_obra WHERE id_obra = o.id_obra) as likes_count
          FROM obra o
          JOIN usuario u ON o.id_usuario = u.id_usuario
          ORDER BY o.fecha_subida DESC
-         LIMIT ? OFFSET ?`,
-        [limite, offset]
+         LIMIT ${lim} OFFSET ${off}`
     );
     return rows;
 }
@@ -57,6 +59,7 @@ async function listarTodas(limite = 50, offset = 0) {
  * Buscar obras por título
  */
 async function buscarPorTitulo(titulo, limite = 50) {
+    const lim = Math.floor(Number(limite)) || 50;
     const [rows] = await pool.execute(
         `SELECT o.*, u.nombre as autor_nombre, u.username as autor_username,
          (SELECT COUNT(*) FROM like_obra WHERE id_obra = o.id_obra) as likes_count
@@ -64,8 +67,8 @@ async function buscarPorTitulo(titulo, limite = 50) {
          JOIN usuario u ON o.id_usuario = u.id_usuario
          WHERE o.titulo LIKE ?
          ORDER BY o.fecha_subida DESC
-         LIMIT ?`,
-        [`%${titulo}%`, limite]
+         LIMIT ${lim}`,
+        [`%${titulo}%`]
     );
     return rows;
 }
